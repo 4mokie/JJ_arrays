@@ -63,27 +63,27 @@ def  I_IZ( Vb, EJ, R, T):
     return out
 
 
-def find_Isw( R , T, C ):
+def find_Isw( RN, R_env , T, C ):
 
-    Vs = np.linspace(0, .5e-3, 51)
+    Vs = np.linspace(0, 5e-3, 51)
     
-    EJ_s = EJ_star (EJ = EJ_AB(R), R = R, T = T, C = C)
+    EJ_s = EJ_star (EJ = EJ_AB(RN), R = R_env, T = T, C = C)
     
     
-    Is = I_IZ( Vs, EJ = EJ_s, R = R, T = T) 
+    Is = I_IZ( Vs, EJ = EJ_s, R = R_env, T = T) 
 
     return np.max(Is)
 
 
-def find_R0( R , T, C ):
+def find_R0( RN, R_env , T, C ):
 
     Vs = np.linspace(0, .1e-5, 51)
     
-    EJ_s = EJ_star (EJ = EJ_AB(R), R = R, T = T, C = C)
+    EJ_s = EJ_star (EJ = EJ_AB(RN), R = R_env, T = T, C = C)
     
-    Is = I_IZ( Vs, EJ = EJ_s, R = R, T = T) 
+    Is = I_IZ( Vs, EJ = EJ_s, R = R_env, T = T) 
     
-    return np.mean(np.diff(Vs - Is*R)/np.diff(Is)) + 1
+    return np.mean(np.diff(Vs - Is*R_env)/np.diff(Is)) + 1
 
 
 def  V_AH( I, Ic, T, EJ, Rn):
