@@ -22,7 +22,7 @@ kB = k
 γ = 0.57721566
 RQ = h/4/e**2
 Φ0 = h/2/e  
-
+Δ = 2.1*kB
 
 def Ic (R, Δ = 2.1*kB):
     return pi*Δ/2/e/R
@@ -101,3 +101,10 @@ def  V_AH( I, Ic, T, EJ, Rn):
             v = np.nan    
         vs.append(v)
     return np.array(vs)
+
+def  II( R1, R2):
+    return R1*R2/(R1+R2)
+
+def  Rj( RN, T ):
+    α = 1e1
+    return α*II( RN, RN*np.exp(Δ/T/kB) )
