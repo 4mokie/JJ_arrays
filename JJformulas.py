@@ -44,6 +44,13 @@ def EJ_star (EJ, R, T, C):
     return EJ*np.exp( -ρ*( ψ(1 + hbar*ωR*β/2/pi)+ γ) )
 
 
+def EJ_star_simp (EJ, C):
+    
+    EC = e**2/C
+    α = kB*EJ/EC/4
+    
+    return EJ*α/( 1+ α)
+
 def  I_IZ( Vb, EJ, R, T):
     out = []
 
@@ -62,12 +69,43 @@ def  I_IZ( Vb, EJ, R, T):
 
     return out
 
+def find_R0_Isw( EJ, R_env , T, VERBOSE = False):
+    
+    
+    
+    Ic0 = EJ/ (Φ0/2/pi/kB)
+    Vc0 = R_env*Ic0
+    
+    Vs = np.linspace(0, 2*Vc0, 201)
+    
+    Is = I_IZ( Vs, EJ = EJ, R = R_env, T = T)
+    
+    Is_max = np.max (Is)
+    R0 = np.mean( (np.diff( Vs - 1*Is*R_env)/np.diff(Is))[:11] ) + 1 
+    
+    if VERBOSE:
+        fig, ax = plt.subplots()
+        
+        ax.plot(Vs - 1*Is*R_env, Is)
+        ax.axhline(Is_max, 0,1, ls = '--', label = r'$I_s = {:2.1f} nA$'.format(Is_max/1e-9))
+        
+        Iss = np.linspace (0, Ic0, 51)
+        ax.plot( R0*Iss, Iss, label = r'$R_0 = {:2.3f} kOhm$'.format(R0/1e3) )
+        
+        ax.legend()
+        
+#         fig.close()
+        print(Is_max)
+        print(Ic0)
+    
+    return R0, Is_max
 
 def find_Isw( RN, R_env , T, C ):
 
-    Vs = np.linspace(0, 5e-3, 51)
+    Vs = np.linspace(0, 10e-3, 51)
     
-    EJ_s = EJ_star (EJ = EJ_AB(RN), R = R_env, T = T, C = C)
+#     EJ_s = EJ_star (EJ = EJ_AB(RN), R = R_env, T = T, C = C)
+    EJ_s = EJ_star_simp (EJ = EJ_AB(RN),  C = C)
     
     
     Is = I_IZ( Vs, EJ = EJ_s, R = R_env, T = T) 
@@ -79,7 +117,8 @@ def find_R0( RN, R_env , T, C ):
 
     Vs = np.linspace(0, .1e-5, 51)
     
-    EJ_s = EJ_star (EJ = EJ_AB(RN), R = R_env, T = T, C = C)
+#     EJ_s = EJ_star (EJ = EJ_AB(RN), R = R_env, T = T, C = C)
+    EJ_s = EJ_star_simp (EJ = EJ_AB(RN),  C = C)
     
     Is = I_IZ( Vs, EJ = EJ_s, R = R_env, T = T) 
     
@@ -107,4 +146,4 @@ def  II( R1, R2):
 
 def  Rj( RN, T ):
     α = 1e1
-    return α*II( RN, RN*np.exp(Δ/T/kB) )
+    return α*RN*np.exp( -1/Δ*T*kB )
