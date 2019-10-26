@@ -145,14 +145,15 @@ def  II( R1, R2):
     return R1*R2/(R1+R2)
 
 def  Iqp(  V, T, G1 = 1/6.76e3, G2 = 1/60e3, V0 = 0.15e-3 ):
-    
-    
-    
-
     I = ( (G1-G2)*V0*np.tanh(V/V0) + G2*V)*np.exp(-Δ/T/kB)
     
     return I
 
+
+def R0_IZ(EJ, R, T):
+    
+    return R/(Iν(0, EJ/T)**2 - 1 )
+    
 #####################################################
 def avg_group(vA0, vB0):
     vA0 = np.round(vA0*1e15)/1e15   #remove small deferences
