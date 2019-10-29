@@ -56,11 +56,14 @@ def XYEqSp(Xarr, Yarr, step):
     outX = []
     outY = []
 
-    n = int((np.max(Xarr) - np.min(Xarr)) // step)    
-    
-    for i in range(n):
-        outX = np.append( outX, V_func(Xarr, Xarr, np.min(Xarr) + i*step)  )
-        outY = np.append( outY, V_func(Xarr, Yarr, np.min(Xarr) + i*step)  )
+    if len(Xarr) == 0 :
+        outX, outY = 0, 0
+    else:    
+        n = int((np.max(Xarr) - np.min(Xarr)) // step)    
+
+        for i in range(n):
+            outX = np.append( outX, V_func(Xarr, Xarr, np.min(Xarr) + i*step)  )
+            outY = np.append( outY, V_func(Xarr, Yarr, np.min(Xarr) + i*step)  )
 
     return outX, outY
 
@@ -160,7 +163,21 @@ def load_IVC_B(file):
 
     return IVC
 
+def find_exp_R0(I, V):
+    
+        dI_max = np.max (np.diff (I) )
+        I, V =  np.sort(I), np.sort(V)
+        if dI_max ==0:
+            dI_max = 1e-11
+        I, V =  XYEqSp(I, V, step = dI_max)
+        
+        R0 = np.mean (np.diff (V) )/np.mean (np.diff (I) )
 
+#         R0 = Rdiff_TVReg(V, Istep = dI_max )
+
+        return R0
+    
+    
 
 def plot_IVC(ax, IVC, cut = False, plotRd = False):
     

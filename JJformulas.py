@@ -15,6 +15,8 @@ from tqdm import tqdm, tqdm_notebook
 import math
 
 from  scipy.special import digamma as ψ
+import scipy.special as special
+
 from mpmath import besseli as Iν
 from scipy.constants import hbar, pi, h, e, k
 
@@ -23,6 +25,12 @@ kB = k
 RQ = h/4/e**2
 Φ0 = h/2/e  
 Δ = 2.1*kB
+
+
+def Qp(EJ, Ec, Rsh):
+#    return wpK(EjK(Ic), EcK(C))*kB/hbar*C*Rshunt
+    return np.pi*Rsh/RQ*(EJ/2/Ec)**0.5
+
 
 def Ic (R, Δ = 2.1*kB):
     return pi*Δ/2/e/R
@@ -153,7 +161,74 @@ def  Iqp(  V, T, G1 = 1/6.76e3, G2 = 1/60e3, V0 = 0.15e-3 ):
 def R0_IZ(EJ, R, T):
     
     return R/(Iν(0, EJ/T)**2 - 1 )
+
+
+def Njump(i, Q, EJ, T):
     
+    Γ = T/EJ
+    
+    z = (8/np.pi/Q/Γ)**0.5
+    Ee = 8/np.pi**0.5/Q*( np.exp(-z**2)/z/special.erfc(z) - np.pi**0.5 ) 
+    
+    Ed = (1 + np.pi**2/8*Ee)**0.5
+    im = np.pi/4*i*Q
+    
+    Np = 1 + 2*Q/np.pi**2*( Ed - 1 ) + i*Q**2/2/np.pi*np.log( ( Ed - im )/(1 - im) )
+    Nm = 1 + 2*Q/np.pi**2*( Ed - 1 ) - i*Q**2/2/np.pi*np.log( ( Ed + im )/(1 + im) )
+
+    
+    return Np, Nm
+
+
+def wpK(EjK, EcK):
+    return np.sqrt(8*EjK*EcK)
+
+def ΔU(i, EJ):
+    ΔUp = 2*EJ*( 1*(1-i**2)**0.5 + i*(np.arcsin(i) - np.pi/2) )
+    ΔUm = 2*EJ*( 1*(1-i**2)**0.5 + i*(np.arcsin(i) + np.pi/2) )
+
+    return ΔUp, ΔUm
+
+def τ(i, EJ, Ec, T):
+    
+    ωa = wpK(EJ, Ec)*kB/hbar * (1 - i**2)**0.25
+    
+    ΔUp, ΔUm = ΔU(i, EJ)
+    
+    τp = 2*np.pi/ωa*np.exp( ΔUp/T )
+    τm = 2*np.pi/ωa*np.exp( ΔUm/T )
+    
+    return τp, τm
+
+def τQ(i, EJ, Ec, T):
+    ωa = wpK(EJ, Ec)*kB/hbar * (1 - i**2)**0.25
+
+    ΔUp, ΔUm = ΔU(i, EJ)
+        
+    aqp = ( 864*np.pi*ΔUp/wpK(EJ,Ec) )**0.5
+    aqm = ( 864*np.pi*ΔUm/wpK(EJ,Ec) )**0.5
+    
+    τQp = 2*np.pi/ωa /aqp  *np.exp(7.2* ΔUp / wpK(EJ,Ec) ) 
+    τQm = 2*np.pi/ωa /aqm  *np.exp(7.2* ΔUm / wpK(EJ,Ec) )
+    return  τQp, τQm
+
+
+def V_KM(i, EJ, Ec, Q, T):
+    
+    τp, τm = τ(i, EJ, Ec, T)
+    Np, Nm = Njump(i, Q, EJ, T)
+    
+    τQp, τQm = τQ(i, EJ, Ec, T)
+    
+    return h/2/e*(Np/τp +1/τQp - Nm/τm - 1/τQm)
+    
+
+def R0_KM(EJ, Ec, Q, T):    
+    di = 0.01
+    Ic0 = EJ/(Φ0/2/pi/kB)
+    R0 = V_KM(di, EJ, Ec, Q, T)/di/Ic0
+    
+    return R0
 #####################################################
 def avg_group(vA0, vB0):
     vA0 = np.round(vA0*1e15)/1e15   #remove small deferences
