@@ -133,17 +133,30 @@ def find_R0( RN, R_env , T, C ):
     return np.mean(np.diff(Vs - Is*R_env)/np.diff(Is)) + 1
 
 
-def  V_AH( I, Ic, T, EJ, Rn):
-    vs = []
+def  V_AH_star( I,  EJ, Rn,  T):
+    Ic0 = EJ/( Φ0/2/pi/kB )
+    i = I/Ic0
     Γ = 2*EJ/T
-    i_s = I/Ic
+    i_ = (1 - i**2)**0.5
+    
+    return 2*Ic0*Rn* i_ * np.exp( -Γ*( i_ + i*np.arcsin(i) ))*np.sinh(np.pi/2*Γ*i)
+    
+
+
+def  V_AH( I,  EJ, Rn,  T):
+    vs = []
+    
+    Ic0 = EJ/( Φ0/2/pi/kB )
+    
+    Γ = 2*EJ/T
+    i_s = I/Ic0
     
     for i in i_s:
         if i < 0.95:
             i_ = (1 - i**2)**0.5
-            v = 2*Ic*Rn* i_ * np.exp( -Γ*( i_ + i*np.arcsin(i) ))*np.sinh(np.pi/2*Γ*i)
+            v = 2*Ic0*Rn* i_ * np.exp( -Γ*( i_ + i*np.arcsin(i) ))*np.sinh(np.pi/2*Γ*i)
         elif i > 1.05:
-            v = Ic*Rn*(i**2 - 1)**0.5
+            v = Ic0*Rn*(i**2 - 1)**0.5
         else:
             v = np.nan    
         vs.append(v)
@@ -213,14 +226,24 @@ def τQ(i, EJ, Ec, T):
     return  τQp, τQm
 
 
-def V_KM(i, EJ, Ec, Q, T):
+def V_KM(I, EJ, Ec, Q, T):
+    
+#     out = [np.nan for i in I]
+    
+    Ic0 = EJ/( Φ0/2/pi/kB )
+    
+    i = I/Ic0
     
     τp, τm = τ(i, EJ, Ec, T)
     Np, Nm = Njump(i, Q, EJ, T)
     
     τQp, τQm = τQ(i, EJ, Ec, T)
     
-    return h/2/e*(Np/τp +1/τQp - Nm/τm - 1/τQm)
+    out = h/2/e*(Np/τp +1/τQp - Nm/τm - 1/τQm)
+    
+    out[np.where (abs(i) > 4/np.pi/Q) ] = np.nan 
+    
+    return out
     
 
 def R0_KM(EJ, Ec, Q, T):    
@@ -229,88 +252,88 @@ def R0_KM(EJ, Ec, Q, T):
     R0 = V_KM(di, EJ, Ec, Q, T)/di/Ic0
     
     return R0
-#####################################################
-def avg_group(vA0, vB0):
-    vA0 = np.round(vA0*1e15)/1e15   #remove small deferences
-    vB0 = np.round(vB0*1e15)/1e15
+# #####################################################
+# def avg_group(vA0, vB0):
+#     vA0 = np.round(vA0*1e15)/1e15   #remove small deferences
+#     vB0 = np.round(vB0*1e15)/1e15
     
-    vA, ind, counts = np.unique(vA0, return_index=True, return_counts=True) # get unique values in vA0
-    vB = vB0[ind]
-    for dup in vB[counts>1]: # store the average (one may change as wished) of original elements in vA0 reference by the unique elements in vB
-        vB[np.where(vA==dup)] = np.average(vB0[np.where(vA0==dup)])
-    return vA, vB
+#     vA, ind, counts = np.unique(vA0, return_index=True, return_counts=True) # get unique values in vA0
+#     vB = vB0[ind]
+#     for dup in vB[counts>1]: # store the average (one may change as wished) of original elements in vA0 reference by the unique elements in vB
+#         vB[np.where(vA==dup)] = np.average(vB0[np.where(vA0==dup)])
+#     return vA, vB
 
 
-def cut_dxdy(vA0, vB0, dx,dy):
+# def cut_dxdy(vA0, vB0, dx,dy):
     
-    ind1 = np.where(np.abs(vA0) < dx )
-    vA1, vB1 = vA0[ind1], vB0[ind1]
+#     ind1 = np.where(np.abs(vA0) < dx )
+#     vA1, vB1 = vA0[ind1], vB0[ind1]
 
-    ind2 = np.where(np.abs(vB1) < dy )
-    vA, vB = vA1[ind2], vB1[ind2]
+#     ind2 = np.where(np.abs(vB1) < dy )
+#     vA, vB = vA1[ind2], vB1[ind2]
 
-    return vA, vB
-
-
-def V_func(I,V, val):
-    out = []
-    for x in np.nditer(val):
-        out = np.append (out,  V[np.argmin(abs(I-x))])
-    return out
+#     return vA, vB
 
 
-def diffArr(Xarr, Yarr, step):
-    out = []
-    for x in Xarr:
-        out = np.append(out, np.mean((V_func(Xarr,Yarr, x+step/2))  - np.mean(V_func(Xarr,Yarr, x-step/2)))/(step))
-    return out
+# def V_func(I,V, val):
+#     out = []
+#     for x in np.nditer(val):
+#         out = np.append (out,  V[np.argmin(abs(I-x))])
+#     return out
 
 
-def R0byFit (I,V,n = 3):
-    V = np.append(V, V[-n:])
-    I = np.append(I, I[-n:])
+# def diffArr(Xarr, Yarr, step):
+#     out = []
+#     for x in Xarr:
+#         out = np.append(out, np.mean((V_func(Xarr,Yarr, x+step/2))  - np.mean(V_func(Xarr,Yarr, x-step/2)))/(step))
+#     return out
+
+
+# def R0byFit (I,V,n = 3):
+#     V = np.append(V, V[-n:])
+#     I = np.append(I, I[-n:])
     
-    out = []
+#     out = []
     
-    for i in range(len(I)-n):    
-        a, b = polyfit (I [i:i+n] , V [i:i+n], 1 )
-        out = np.append(out, a)
+#     for i in range(len(I)-n):    
+#         a, b = polyfit (I [i:i+n] , V [i:i+n], 1 )
+#         out = np.append(out, a)
         
-    return out
+#     return out
 
-def XYEqSp(Xarr, Yarr, step):
-    outX = []
-    outY = []
+# def XYEqSp(Xarr, Yarr, step):
+#     outX = []
+#     outY = []
 
-    n = int((np.max(Xarr) - np.min(Xarr)) // step)    
+#     n = int((np.max(Xarr) - np.min(Xarr)) // step)    
     
-    for i in range(n):
-        outX = np.append( outX, V_func(Xarr, Xarr, np.min(Xarr) + i*step)  )
-        outY = np.append( outY, V_func(Xarr, Yarr, np.min(Xarr) + i*step)  )
+#     for i in range(n):
+#         outX = np.append( outX, V_func(Xarr, Xarr, np.min(Xarr) + i*step)  )
+#         outY = np.append( outY, V_func(Xarr, Yarr, np.min(Xarr) + i*step)  )
 
-    return outX, outY
+#     return outX, outY
 
 
-def offsetRemove(I,V, Istep, mode = 'ZF', Ioff_def = 8e-12):
+# def offsetRemove(I,V, Istep, mode = 'ZF', Ioff_def = 8e-12):
        
-    Rdiff = Rdiff_TVReg(V, Istep)
+#     Rdiff = Rdiff_TVReg(V, Istep)
     
-    ind_minR = np.argmin(Rdiff)
-    ind_maxR = np.argmax(Rdiff)
+#     ind_minR = np.argmin(Rdiff)
+#     ind_maxR = np.argmax(Rdiff)
 
 
-    if mode == 'ZF':
-        Ioff = I[ind_minR]
-    else:
-        Ioff = Ioff_def
+#     if mode == 'ZF':
+#         Ioff = I[ind_minR]
+#     else:
+#         Ioff = Ioff_def
   
-    Voff = V_func(I, V, Ioff)
+#     Voff = V_func(I, V, Ioff)
 
-    Inew = I - Ioff
-    Vnew = V - Voff
+#     Inew = I - Ioff
+#     Vnew = V - Voff
    
 
-    return Inew, Vnew
+#     return Inew, Vnew
 
 # def Rdiff_TVReg(V, Istep):
 #     stepx = 0.05
