@@ -10,6 +10,9 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as GridSpec
 import numpy as np
 import os
+import sympy as sp
+
+from scipy import integrate
 
 from tqdm import tqdm, tqdm_notebook
 import math
@@ -367,5 +370,188 @@ def eng_string( x, sig_figs=3, si=True):
 
     return ( '%s%s%s') % ( sign, x3, exp3_text)
 
+
+#Tom's additions:
+
+def I_qsm(V,Renv,T,Ej,Ec):
+    rho = Renv/RQ
+    #beta = 1/(kB*T)
+    beta = 1/T
+    Ejstar = Ej*rho**rho*(beta*Ec/(2*pi**2))**(-1*rho)*np.exp(-1*rho*γ)
+    Iqsm = (e*rho*beta*pi/hbar)*(Ejstar)**2*(beta*e*V/kB)/((beta*e*V/kB)**2+pi**2*rho**2)
+    
+    return Iqsm
+
+
+def I_cb_ig(V,Renv,T,Ej,L):
+    rho = Renv/RQ
+    #beta = 1/(kB*T)    
+    beta = 1/T
+    Icb = beta*Ej*np.exp(-L)/(4*pi)*np.abs(gamma(rho - 1j*beta*e*V/kB/pi))**2/gamma(2*rho)*np.sinh(beta*e*V/kB)
+    
+    return Icb
+
+def I_cb_ig_gammainput(V,Renv,T,Ej,L,G):
+    rho = Renv/RQ
+    #beta = 1/(kB*T)
+    beta = 1/T
+    Icb = beta*Ej*np.exp(-L)/(4*pi)*G*np.sinh(beta*e*V/kB)
+    
+    return Icb
+
+def V_qsm(Renv,T,Eb,Tqm):
+    rho = Renv/RQ
+    #beta = 1/(kb*T)
+    beta = 1/T
+    #Eb = Ib*Φ0/(2*pi)/kB #check all the kB's!!!!!
+    Vqsm = rho*pi/(beta*e)*(1-np.exp(-2*pi*beta*Eb))/Tqm
+    #print('pi*beta*Eb = ' + str(pi*beta*Eb))
+    
+    return Vqsm
+
+def V_qsm_full_verbose(Renv,T,Eb,Ej,Ec):
+    beta = 1/T
+    rho = Renv/RQ
+    Lambda = 2*rho *(γ + 2*pi**2*rho/(beta*Ec) + ψ(beta*Ec/(2*(pi**2)*rho)))
+    theta = Lambda*beta*Ej
+    Ejstar = Ej*(1-Lambda/2)
+    Tintegral = integrate.dblquad(lambda phi,phip: np.exp(-beta*Eb*phi)*np.exp(beta*Ejstar*np.cos(phip)*np.sin(phi/2))*(1-theta*np.sin(phip-phi/2))*np.exp(2*beta*theta*np.sin(phip)*np.sin(phi/2)*(Eb + Ejstar*np.cos(phip)*np.cos(phi/2))), 0, 2*pi, lambda phip: 0, lambda phip: 2*pi)
+    Tqm = Tintegral[0]
+    #rho = Renv/RQ
+    #beta = 1/T
+    Vqsm = rho*pi/(beta*e)*(1-np.exp(-2*pi*beta*Eb))/Tqm
+    #starting here is annoying stuff to remove
+    print('Renv = ' + str(Renv))
+    print('T = ' + str(T))
+    print('Eb = ' + str(Eb))
+    print('Ej = ' + str(Ej))
+    print('Ec = ' + str(Ec))
+    print('beta = ' + str(beta))
+    print('rho = ' + str(rho))
+    print('Lambda = ' + str(Lambda))
+    print('theta = ' + str(theta))
+    print('Ejstar = ' + str(Ejstar))
+    print('Tqm = ' + str(Tqm))
+    print('Vqsm = ' + str(Vqsm))
+        
+    return Vqsm
+
+
+def V_qsm_full(Renv,T,Eb,Ej,Ec):
+    beta = 1/T
+    rho = Renv/RQ
+    Lambda = 2*rho *(γ + 2*pi**2*rho/(beta*Ec) + ψ(beta*Ec/(2*pi**2*rho)))
+    theta = Lambda*beta*Ej
+    Ejstar = Ej*(1-Lambda/2)
+    Tintegral = integrate.dblquad(lambda phi,phip: np.exp(-beta*Eb*phi)*np.exp(-2*beta*Ejstar*np.cos(phip)*np.sin(phi/2))*(1-theta*np.sin(phip-phi/2))*np.exp(2*beta*theta*np.sin(phip)*np.sin(phi/2)*(Eb + Ejstar*np.cos(phip)*np.cos(phi/2))), 0, 2*pi, lambda phip: 0, lambda phip: 2*pi)
+    Tqm = Tintegral[0]
+    #rho = Renv/RQ
+    #beta = 1/T
+    Vqsm = rho*pi/(beta*e)*(1-np.exp(-2*pi*beta*Eb))/Tqm
+        
+    return Vqsm
+#add Tqm to return
+
+def V_qsm_scaled(Renv,T,Eb,Ej,Ec):
+    beta = 1/T
+    rho = Renv/RQ
+    Lambda = 2*rho *(γ + 2*pi**2*rho/(beta*Ec) + ψ(beta*Ec/(2*pi**2*rho)))
+    theta = Lambda*beta*Ej
+    Ejstar = Ej*(1-Lambda/2)
+    Tintegral = integrate.dblquad(lambda phi,phip: np.exp(-beta*Eb*phi)*np.exp(-2*beta*Ejstar*np.cos(phip)*np.sin(phi/2))*(1-theta*np.sin(phip-phi/2))*np.exp(2*beta*theta*np.sin(phip)*np.sin(phi/2)*(Eb + Ejstar*np.cos(phip)*np.cos(phi/2))), 0, 2*pi, lambda phip: 0, lambda phip: 2*pi)
+    Tqm = Tintegral[0]
+    #rho = Renv/RQ
+    #beta = 1/T
+    Vqsm = 10**6*rho*pi/(beta*e)*(1-np.exp(-2*pi*beta*Eb))/Tqm
+        
+    return Vqsm
+
+
+
+
+
+def V_cl(Renv,T,Eb,Tcl):
+    rho = Renv/RQ
+    #beta = 1/(kb*T)
+    beta = 1/T
+    #Eb = Ib*Φ0/(2*pi)/kB #check all the kB's!!!!!
+    Vcl = rho*pi/(beta*e/kB)*(1-np.exp(-2*pi*beta*Eb))/Tcl
+    #print('pi*beta*Eb = ' + str(pi*beta*Eb))
+    
+    return Vcl
+
+
+def V_cl_full(Renv,T,Eb,Ej):
+    rho = Renv/RQ
+    #beta = 1/(kb*T)
+    beta = 1/T
+    Tintegral = integrate.quad(lambda phi: np.exp(-beta*Eb*phi)*Iν(0,2*beta*Ej*np.sin(phi/2)), 0, 2*pi)
+    Tcl = Tintegral[0]
+    #Eb = Ib*Φ0/(2*pi)/kB #check all the kB's!!!!!
+    Vcl = rho*pi/(beta*e)*(1-np.exp(-2*pi*beta*Eb))/Tcl
+    #print('pi*beta*Eb = ' + str(pi*beta*Eb))
+    
+    return Vcl
+#check above function...    
+
+
+# Try Tcl (should give IZ theory), CB, other stuff...in PE or w/e we have Tqm = Tcl(Ej*)
+
+def T_qm(Renv,T,Eb,Ej,Ec):
+    beta = 1/T
+    rho = Renv/RQ
+    Lambda = 2*rho *(γ + 2*pi**2*rho/(beta*Ec) + ψ(beta*Ec/(2*pi**2*rho)))
+    theta = Lambda*beta*Ej
+    Ejstar = Ej*(1-Lambda/2) 
+    Tintegral = integrate.dblquad(lambda phi,phip: (1/(2*pi))*np.exp(-beta*Eb*phi)*np.exp(-2*beta*Ejstar*np.cos(phip)*np.sin(phi/2))*(1-theta*np.sin(phip-phi/2))*np.exp(2*beta*theta*np.sin(phip)*np.sin(phi/2)*(Eb + Ejstar*np.cos(phip)*np.cos(phi/2))), 0, 2*pi, lambda phip: 0, lambda phip: 2*pi)
+    Tqm = Tintegral
+    
+    #print(beta, rho, Lambda, theta, Ejstar)
+        
+    return Tqm
+
+
+def T_qm_test(Renv,T,Eb,Ej,Ec):
+    beta = 1/T
+    rho = Renv/RQ
+    Lambda = 2*rho *(γ + 2*pi**2*rho/(beta*Ec) + ψ(beta*Ec/(2*pi**2*rho)))
+    theta = Lambda*beta*Ej
+    Ejstar = Ej*(1-Lambda/2) 
+    Tintegral = integrate.dblquad(lambda phi,phip: (1/(2*pi))*np.exp(-phi)*np.exp(-2*np.cos(phip)*np.sin(phi/2))*(1-np.sin(phip-phi/2))*np.exp(2*np.sin(phip)*np.sin(phi/2)*(1 + 1*np.cos(phip)*np.cos(phi/2))), 0, 2*pi, lambda phip: 0, lambda phip: 2*pi)
+    Tqm = Tintegral
+    
+    #print(beta, rho, Lambda, theta, Ejstar)
+        
+    return Tqm
+
+
+#note: make this stuff more readable, maybe with kwargs. Maybe have a function that takes Ej, Ec, etc as inputs and outputs a useful array that can be used as input for these functions? anyway, do that later.
+
+def T_cl(T,Eb,Ej):
+    #beta = 1/(kB*T)
+    beta = 1/T
+    #Eb = 1
+    #Ej = 1
+    #Tcl = 1
+    
+    #above is a placeholder
+    Tintegral = integrate.quad(lambda phi: np.exp(-beta*Eb*phi)*Iν(0,2*beta*Ej*np.sin(phi/2)), 0, 2*pi)
+    Tcl = Tintegral
+    
+    return Tcl 
+
+
+def V_qsm1(Renv,T,Eb,Ej,Ec):
+    beta = 1/T
+    rho = Renv/RQ
+    Ic = Ej/(Φ0/(2*pi*k))
+    Lambda = 2*rho *(γ + 2*pi**2*rho/(beta*Ec) + ψ(beta*Ec/(2*pi**2*rho)))
+    theta = Lambda*beta*Ej
+    alpha = Eb/Ej
+    
+    Vqsm1 = np.sqrt(1-alpha**2)/(2*pi)*np.exp(-2*beta*Ej*(1-alpha**2)**(3/2)/(3*alpha**2))*np.exp(2*theta*np.sqrt(1-alpha**2))
+    
+    return Vqsm1,Ic,Lambda,theta,Eb,alpha
+    
 
 

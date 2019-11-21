@@ -233,7 +233,15 @@ def load_by_key(exp, key, val):
         
     ind =   np.argmin ( np.abs( exp[key] - val ))
     return ind
+
+def load_by_key_IV(exp, key, val):
+        
+    ind =   np.argmin ( np.abs( exp[key] - val ))
+    I, V = exp['Is'][ind], exp['Vs'][ind]
+    return I,V
     
+
+
 def plot_by_key(exp, key, val, ax = None,**kw):
    
     ind =   np.argmin ( np.abs( exp[key] - val ))
@@ -246,7 +254,9 @@ def plot_by_key(exp, key, val, ax = None,**kw):
         fig, ax = plt.subplots()
         
     ax.plot( I, V, 'o', label = 'T = {:2.0f} mK, {} = {:1.2f} '.format( exp['T']/1e-3, key, exp[key][ind] ) , **kw)
-    ax.legend()   
+    ax.legend() 
+    ax.set_xlabel('I (A)')
+    ax.set_ylabel('V (V)')
     
     return I, V
     
