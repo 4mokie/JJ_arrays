@@ -10,6 +10,127 @@ import os
 from tvregdiff import *
 from JJformulas import *
 
+
+import qcodes as qc
+from qcodes.dataset.database import initialise_database
+from qcodes.dataset.plotting import plot_by_id, get_data_by_id
+
+def xy_by_id(idx):
+    alldata = get_data_by_id(idx)
+    
+    x = alldata[0][0]['data']
+    y = alldata[0][1]['data']
+    
+    return x,y
+
+
+
+def extract_Isw_R0_by_id (idx):
+    
+    alldata = get_data_by_id(idx)
+    
+    Is = alldata[0][0]['data']
+    Vs = alldata[0][1]['data']
+
+        
+    return extract_Isw_R0 (Is,Vs)
+
+
+
+# def populate_exps (exps, VERBOSE = False):
+
+#     texps = tqdm_notebook(exps)
+#     for exp in texps:
+
+#         Isws = []
+#         R0s = []
+
+#         if VERBOSE:
+#             fig, ax = plt.subplots()
+
+#         Is = []
+#         Vs = []
+
+#         Irs = []
+#         Vrs = []
+
+#         Ils = []
+#         Vls = []
+
+#         for i in exp['ids']:
+
+#             I, V = xy_by_id(i)
+
+#             Tb = exp['T']
+
+#             ind_Vmax = np.argmax(I)
+#             ind_Vmin = np.argmin(I)
+
+#             ind_I0 = np.argmin(abs(I - 0e-12))
+#             ind_near0 = np.where(abs(I) < 10e-12)
+
+
+#     #         V_off = (V[ind_Vmax] + V[ind_Vmin])/2
+
+#             V_off = V[ind_I0]
+# #             V_off = np.mean(V[ind_near0])
+
+
+#             V -= V_off
+#     #         I, V = offsetRemove(I,V, offX = 25.5e-12, offY = 35e-6)
+
+
+#             I, V = cut_dxdy(I, V, dx = 2e-9 ,dy = 80e-6)
+
+#     #         I = I - Iqp(  V, T = Tb, G1 = 1/20.06e3, G2 = 1/120e3, V0 = 0.35e-3 ) 
+
+#             g0 = np.where(I>0)
+#             l0 = np.where(I<0)
+
+#             Ir, Vr = I[g0], V[g0]
+#             Il, Vl = I[l0], V[l0]
+
+
+#             if VERBOSE:
+#                 ax.plot(I,V, 'o')
+
+#             Isw, R0 = extract_Isw_R0 (I,V)
+#             Isws.append(Isw)
+#             R0s.append(R0)
+
+
+#             Is.append(I)
+#             Vs.append(V)
+
+#             Irs.append(Ir)
+#             Vrs.append(Vr)
+
+#             Ils.append(Il)
+#             Vls.append(Vl)
+
+
+
+#         exp ['Is' ] =  Is
+#         exp ['Vs' ] =  Vs
+
+#         exp ['Irs' ] =  Irs
+#         exp ['Vrs' ] =  Vrs
+
+#         exp ['Ils' ] =  Ils
+#         exp ['Vls' ] =  Vls
+
+
+
+#         exp ['Isws'] =  np.array(Isws)
+#         exp ['R0s' ] =  np.array(R0s )
+#         exp ['cos' ] =  np.array( abs(np.cos(np.pi*(exp['B'] - ZF )/(2* (FF - ZF)  )) ) )
+
+        
+
+
+        
+        
+        
 def avg_group(vA0, vB0):
     vA0 = np.round(vA0*1e15)/1e15   #remove small deferences
     vB0 = np.round(vB0*1e15)/1e15
