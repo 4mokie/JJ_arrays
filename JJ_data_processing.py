@@ -24,108 +24,13 @@ def xy_by_id(idx):
     return x,y
 
 
-
 def extract_Isw_R0_by_id (idx):
     
-    alldata = get_data_by_id(idx)
-    
-    Is = alldata[0][0]['data']
-    Vs = alldata[0][1]['data']
+    Is,Vs = xy_by_id(idx)
 
         
     return extract_Isw_R0 (Is,Vs)
 
-
-
-# def populate_exps (exps, VERBOSE = False):
-
-#     texps = tqdm_notebook(exps)
-#     for exp in texps:
-
-#         Isws = []
-#         R0s = []
-
-#         if VERBOSE:
-#             fig, ax = plt.subplots()
-
-#         Is = []
-#         Vs = []
-
-#         Irs = []
-#         Vrs = []
-
-#         Ils = []
-#         Vls = []
-
-#         for i in exp['ids']:
-
-#             I, V = xy_by_id(i)
-
-#             Tb = exp['T']
-
-#             ind_Vmax = np.argmax(I)
-#             ind_Vmin = np.argmin(I)
-
-#             ind_I0 = np.argmin(abs(I - 0e-12))
-#             ind_near0 = np.where(abs(I) < 10e-12)
-
-
-#     #         V_off = (V[ind_Vmax] + V[ind_Vmin])/2
-
-#             V_off = V[ind_I0]
-# #             V_off = np.mean(V[ind_near0])
-
-
-#             V -= V_off
-#     #         I, V = offsetRemove(I,V, offX = 25.5e-12, offY = 35e-6)
-
-
-#             I, V = cut_dxdy(I, V, dx = 2e-9 ,dy = 80e-6)
-
-#     #         I = I - Iqp(  V, T = Tb, G1 = 1/20.06e3, G2 = 1/120e3, V0 = 0.35e-3 ) 
-
-#             g0 = np.where(I>0)
-#             l0 = np.where(I<0)
-
-#             Ir, Vr = I[g0], V[g0]
-#             Il, Vl = I[l0], V[l0]
-
-
-#             if VERBOSE:
-#                 ax.plot(I,V, 'o')
-
-#             Isw, R0 = extract_Isw_R0 (I,V)
-#             Isws.append(Isw)
-#             R0s.append(R0)
-
-
-#             Is.append(I)
-#             Vs.append(V)
-
-#             Irs.append(Ir)
-#             Vrs.append(Vr)
-
-#             Ils.append(Il)
-#             Vls.append(Vl)
-
-
-
-#         exp ['Is' ] =  Is
-#         exp ['Vs' ] =  Vs
-
-#         exp ['Irs' ] =  Irs
-#         exp ['Vrs' ] =  Vrs
-
-#         exp ['Ils' ] =  Ils
-#         exp ['Vls' ] =  Vls
-
-
-
-#         exp ['Isws'] =  np.array(Isws)
-#         exp ['R0s' ] =  np.array(R0s )
-#         exp ['cos' ] =  np.array( abs(np.cos(np.pi*(exp['B'] - ZF )/(2* (FF - ZF)  )) ) )
-
-        
 
 
         
@@ -324,7 +229,7 @@ def extract_Isw_R0 (Is,Vs):
             Isw, R0 = np.nan, np.nan
             return Isw, R0
         
-        Isw = (np.max(Is) - np.min(Is) ) /2
+        Isw = np.max(Is)#(np.max(Is) - np.min(Is) ) /2
         
         order = Is.argsort()
         
@@ -341,7 +246,7 @@ def extract_Isw_R0 (Is,Vs):
             R0 = np.nan
             return Isw, R0
         
-#         R0, b = np.polyfit (  Is[n_sl] , Vs[n_sl], 1 )
+        #R0, b = np.polyfit (  Is[n_sl] , Vs[n_sl], 1 )
         R0 = np.mean(np.diff(Vs[n_sl])) / np.mean(np.diff(Is[n_sl]))        
         
         if R0 < 0:
@@ -519,7 +424,9 @@ def IVC_symmer(I,V):
 
 
 
+def cos_to_B(cos, ZF = 0.004e-3, FF = 0.218e-3):
 
+    return np.arccos(cos)*(2* (FF - ZF)/np.pi + ZF  )
 
 
 

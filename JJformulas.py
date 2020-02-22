@@ -226,22 +226,23 @@ def τQ(i, EJ, Ec, T):
     return  τQp, τQm
 
 
-def V_KM(I, EJ, Ec, Q, T):
+def V_KM(i, EJ, Ec, Q, T):
     
 #     out = [np.nan for i in I]
     
     Ic0 = EJ/( Φ0/2/pi/kB )
     
-    i = I/Ic0
+   
     
     τp, τm = τ(i, EJ, Ec, T)
     Np, Nm = Njump(i, Q, EJ, T)
     
     τQp, τQm = τQ(i, EJ, Ec, T)
     
-    out = h/2/e*(Np/τp +1/τQp - Nm/τm - 1/τQm)
+#     out = h/2/e*(Np/τp +1/τQp - Nm/τm - 1/τQm)
+    out = h/2/e*(Np/τp  - Nm/τm)
     
-    out[np.where (abs(i) > 4/np.pi/Q) ] = np.nan 
+#     out[np.where (abs(i) > 4/np.pi/Q) ] = np.nan 
     
     return out
     
