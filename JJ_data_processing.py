@@ -64,6 +64,10 @@ def offsetRemove(X,Y, offX, offY):
 
 
 def eng_string( x, sig_figs=3, si=True):
+    
+    if isinstance(x, str):
+        return x
+    
     x = float(x)
     sign = ''
     if x < 0:
@@ -73,6 +77,10 @@ def eng_string( x, sig_figs=3, si=True):
         exp = 0
         exp3 = 0
         x3 = 0
+    elif abs (x) < 1 and abs (x) > 1e-3  :
+        exp = 0
+        exp3 = 0
+        x3 = x
     else:
         exp = int(math.floor(math.log10( x )))
         exp3 = exp - ( exp % 3)

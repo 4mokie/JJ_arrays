@@ -341,32 +341,6 @@ def R0_KM(EJ, Ec, Q, T):
 #     Rdiff = (TVRegDiff(V, 100, 10e-3, dx = stepx, ep=1e-1, scale='small', plotflag=0)*stepx / Istep)[:-1]
 #     return Rdiff
 
-def eng_string( x, sig_figs=3, si=True):
-    x = float(x)
-    sign = ''
-    if x < 0:
-        x = -x
-        sign = '-'
-    if x == 0:
-        exp = 0
-        exp3 = 0
-        x3 = 0
-    else:
-        exp = int(math.floor(math.log10( x )))
-        exp3 = exp - ( exp % 3)
-        x3 = x / ( 10 ** exp3)
-        x3 = round( x3, -int( math.floor(math.log10( x3 )) - (sig_figs-1)) )
-        if x3 == int(x3): # prevent from displaying .0
-            x3 = int(x3)
-
-    if si and exp3 >= -24 and exp3 <= 24 and exp3 != 0:
-        exp3_text = 'yzafpnum kMGTPEZY'[ exp3 // 3 + 8]
-    elif exp3 == 0:
-        exp3_text = ''
-    else:
-        exp3_text = 'e%s' % exp3
-
-    return ( '%s%s%s') % ( sign, x3, exp3_text)
 
 
 
