@@ -14,6 +14,8 @@ from JJformulas import *
 import qcodes as qc
 from qcodes.dataset.database import initialise_database
 from qcodes.dataset.plotting import plot_by_id, get_data_by_id
+from scipy.interpolate import UnivariateSpline
+
 
 def xy_by_id(idx):
     alldata = get_data_by_id(idx)
@@ -287,65 +289,52 @@ def plot_by_key(exp, key, val, ax = None,**kw):
     
     
     
+# def get_Is(self, idx,  dy = 300e-6, Voff = -0.55e-3):
+
+#     I, V = xy_by_id(idx)
+#     V-= Voff
+#     I, V = cut_dxdy(I, V, dx = 50e-9 ,dy = dy)
+
+#     return I,V+Voff    
     
     
     
     
     
+def get_R0(x,y, x0 = 0, VERBOSE = False):
     
-def find_exp_R0(I, V):
+    if len(y) < 5:
+        return np.nan
     
-        dI_max = np.max (np.diff (I) )
-        I, V =  np.sort(I), np.sort(V)
-        if dI_max ==0:
-            dI_max = 1e-11
-        I, V =  XYEqSp(I, V, step = dI_max)
+    sort_ind = np.argsort(x)
+    x, y = x[sort_ind], y[sort_ind]
+
+    _, unique_ind = np.unique(x, return_index=True)
+    x, y = x[unique_ind], y[unique_ind]
+
+    x,y = remove_jumps(x,y)
+
+    spl = UnivariateSpline(x, y)
+    spl.set_smoothing_factor(0.5)
+    
+    diff = np.diff( spl(x) )/ np.diff( x )
+    
+    i_x0 = np.argmin( abs( x - x0) )
+    
+    R0 = diff[i_x0] 
+    
+    if VERBOSE:
+        fig, ax = plt.subplots()
         
-        R0 = np.mean (np.diff (V) )/np.mean (np.diff (I) )
-
-#         R0 = Rdiff_TVReg(V, Istep = dI_max )
-
-        return R0
-    
-    
-
-def plot_IVC(ax, IVC, cut = False, plotRd = False):
-    
-    I = IVC['I']
-    V = IVC['V']
-    B = IVC['B']
-    
-    
-
-    
-    cosφ =  np.abs( np.cos(np.pi/2*B/8.85e-4))
-    
-    IVC['cosφ'] = cosφ
-    
-    if cut:
-        I, V = cut_dxdy(I, V, dx = 5e-9 ,dy = 3.85e-5)
-        I, V = IVC_symmer(I,V)
-
-#         dI_max = np.max (np.diff (I) )
-#         I, V =  XYEqSp(I, V, step = dI_max)
+        ax.plot(x,y, 'o', ls = '')
+        ax.plot(x, spl(x))
         
-#         R0 = Rdiff_TVReg(V, Istep = dI_max )
-#         ax.plot (I, I*np.min(  np.abs(R0) ))
-    
-    ax.plot(I ,V, 'o-',  label = 'cos = {:1.2f}'.format(cosφ))
-
-    
-    
-    if plotRd:
-        Rds = Rdiff_TVReg(V, Istep = 1e-10)
         ax2 = ax.twinx()
-        ax2.plot(I, Rds)
-        
-
-
-# def fit_to_IZ(IVC, )
-
-
+        ax2.plot(x[:-1], diff, c = 'k')
+    
+    return R0
+    
+    
 
 
 
@@ -357,17 +346,35 @@ def V_func(I,V, val):
     return out
 
 
-# def diffArr(Xarr, Yarr, step):
-#     out = []
-#     for x in Xarr:
-#         out = np.append(out, np.mean((V_func(Xarr,Yarr, x+step/2))  - np.mean(V_func(Xarr,Yarr, x-step/2)))/(step))
-#     return out
+
+def remove_jumps(x,y):
+    
+    
+    if len(y) < 3:
+        return x,y
+    
+    y_out = []
+    i_off = 1
+    Voff = 0
+    for i in range(len(y) ):
+
+        steps = abs(np.diff(y))
+
+        if i > i_off and i < len(y) - 2 :
+
+            avg_diff = np.mean(steps[:i-1])
+            if steps[i-1] > 10* avg_diff:
+                Voff -= steps[i-1]
 
 
-# def Rdiff_TVReg(V, Istep):
-#     stepx = 0.05
-#     Rdiff = (TVRegDiff(V, 100, 10e-3, dx = stepx, ep=1e-1, scale='small', plotflag=0)*stepx / Istep)[:-1]
-#     return Rdiff
+
+        y_out.append(y[i]+Voff)
+
+
+    y = np.array(y_out)
+    x = x
+    return x,y
+
 
 
 def XYEqSp(Xarr, Yarr, step):
@@ -384,58 +391,6 @@ def XYEqSp(Xarr, Yarr, step):
             outY = np.append( outY, V_func(Xarr, Yarr, np.min(Xarr) + i*step)  )
 
     return outX, outY
-
-
-
-
-
-# def IqpRemove(X,Y, offX, offY):
-    
-#     return X - offX, Y - offY 
-
-
-
-
-# def offsetRemove(I,V, Istep, mode = 'ZF', Ioff_def = 8e-12):
-       
-#     Rdiff = Rdiff_TVReg(V, Istep)
-    
-#     ind_minR = np.argmin(Rdiff)
-#     ind_maxR = np.argmax(Rdiff)
-
-
-#     if mode == 'ZF':
-#         Ioff = I[ind_minR]
-#     else:
-#         Ioff = Ioff_def
-  
-#     Voff = V_func(I, V, Ioff)
-
-#     Inew = I - Ioff
-#     Vnew = V - Voff
-   
-
-#     return Inew, Vnew
-
-
-def IVC_symmer(I,V):
-    
-    I_off = ( np.max(I) + np.min(I) )/2
-    V_off = ( np.max(V) + np.min(V) )/2
-    V_off = 0
-    return I - I_off, V - V_off 
-
-# def Rdiff_TVReg(V, Istep):
-#     stepx = 0.05
-#     Rdiff = (TVRegDiff(V, 100, 10e-3, dx = stepx, ep=1e-1, scale='small', plotflag=0)*stepx / Istep)[:-1]
-#     return Rdiff
-
-
-
-def cos_to_B(cos, ZF = 0.004e-3, FF = 0.218e-3):
-
-    return np.arccos(cos)*(2* (FF - ZF)/np.pi + ZF  )
-
 
 
     
