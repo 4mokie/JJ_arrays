@@ -17,7 +17,9 @@ from scipy import integrate
 from tqdm import tqdm, tqdm_notebook
 import math
 
-from  scipy.special import digamma as ψ
+from qcodes.dataset.plotting import plot_by_id, get_data_by_id
+
+from  scipy.special import digamma as ψ, gamma
 import scipy.special as special
 
 from mpmath import besseli as Iν
@@ -373,6 +375,12 @@ def eng_string( x, sig_figs=3, si=True):
 
 #Tom's additions:
 
+def Eb(I):
+    return I*Φ0/(2*pi*k)
+
+def Ij(Ej):
+    return Ej*2*pi*k/Φ0
+
 def I_qsm(V,Renv,T,Ej,Ec):
     rho = Renv/RQ
     #beta = 1/(kB*T)
@@ -383,11 +391,12 @@ def I_qsm(V,Renv,T,Ej,Ec):
     return Iqsm
 
 
-def I_cb_ig(V,Renv,T,Ej,L):
+def I_cb_ig(V,Renv,T,Ej,Ec):
     rho = Renv/RQ
     #beta = 1/(kB*T)    
     beta = 1/T
-    Icb = beta*Ej*np.exp(-L)/(4*pi)*np.abs(gamma(rho - 1j*beta*e*V/kB/pi))**2/gamma(2*rho)*np.sinh(beta*e*V/kB)
+    L = 2*rho *(γ + 2*pi**2*rho/(beta*Ec) + ψ(beta*Ec/(2*(pi**2)*rho)))
+    Icb = beta*Ej*np.exp(-L)/(4*pi)*np.abs(special.gamma(rho - 1j*beta*e*V/kB/pi))**2/special.gamma(2*rho)*np.sinh(beta*e*V/kB)
     
     return Icb
 
@@ -447,7 +456,7 @@ def V_qsm_full(Renv,T,Eb,Ej,Ec):
     Tqm = Tintegral[0]
     #rho = Renv/RQ
     #beta = 1/T
-    Vqsm = rho*pi/(beta*e)*(1-np.exp(-2*pi*beta*Eb))/Tqm
+    Vqsm = rho*pi/(beta*kB*e)*(1-np.exp(-2*pi*beta*Eb))/Tqm
         
     return Vqsm
 #add Tqm to return
@@ -468,7 +477,40 @@ def V_qsm_scaled(Renv,T,Eb,Ej,Ec):
 
 
 
+def V_qsm_full_test2(Renv,T,Eb,Ej,Ec):
+    beta = 1/T
+    rho = Renv/RQ
+    Lambda = 2*rho *(γ + 2*pi**2*rho/(beta*Ec) + ψ(beta*Ec/(2*pi**2*rho)))
+    theta = Lambda*beta*Ej
+    S = γ + pi**2*rho/(beta*Ec) + ψ(beta*Ec/(2*pi**2*rho))
+    Ejstar = Ej*np.exp(-rho*S)
+    #Ejstar = Ej*(1-Lambda/2)
+    Tintegral = integrate.dblquad(lambda phi,phip: np.exp(-beta*Eb*phi)*np.exp(-2*beta*Ejstar*np.cos(phip)*np.sin(phi/2))*(1-theta*np.sin(phip-phi/2))*np.exp(2*beta*theta*np.sin(phip)*np.sin(phi/2)*(Eb + Ejstar*np.cos(phip)*np.cos(phi/2))), 0, 2*pi, lambda phip: 0, lambda phip: 2*pi)
+    Tqm = Tintegral[0]
+    #rho = Renv/RQ
+    #beta = 1/T
+    Vqsm = rho*pi/(beta*e)*(1-np.exp(-2*pi*beta*Eb))/Tqm
+        
+    return Vqsm
+    
 
+def V_qsm_full_test3(Renv,T,Eb,Ej,Ec):
+    beta = 1/T
+    rho = Renv/RQ
+    Lambda = 2*rho *(γ + 2*pi**2*rho/(beta*Ec) + ψ(beta*Ec/(2*pi**2*rho)))
+    theta = Lambda*beta*Ej
+    #S = γ + pi**2*rho/(beta*Ec) + ψ(beta*Ec/(2*pi**2*rho))
+    Ejstar = Ej*rho**rho*(beta*Ec/(2*pi**2))**(-1*rho)*np.exp(-rho*γ)
+    #Ejstar = Ej*(1-Lambda/2)
+    Tintegral = integrate.dblquad(lambda phi,phip: np.exp(-beta*Eb*phi)*np.exp(-2*beta*Ejstar*np.cos(phip)*np.sin(phi/2))*(1-theta*np.sin(phip-phi/2))*np.exp(2*beta*theta*np.sin(phip)*np.sin(phi/2)*(Eb + Ejstar*np.cos(phip)*np.cos(phi/2))), 0, 2*pi, lambda phip: 0, lambda phip: 2*pi)
+    Tqm = Tintegral[0]
+    #rho = Renv/RQ
+    #beta = 1/T
+    Vqsm = rho*pi/(beta*e)*(1-np.exp(-2*pi*beta*Eb))/Tqm
+        
+    return Vqsm
+    
+    
 
 def V_cl(Renv,T,Eb,Tcl):
     rho = Renv/RQ
@@ -525,6 +567,22 @@ def T_qm_test(Renv,T,Eb,Ej,Ec):
     return Tqm
 
 
+def T_qm_test2(Renv,T,Eb,Ej,Ec):
+    beta = 1/T
+    rho = Renv/RQ
+    Lambda = 2*rho *(γ + 2*pi**2*rho/(beta*Ec) + ψ(beta*Ec/(2*pi**2*rho)))
+    theta = Lambda*beta*Ej
+    #Ejstar = Ej*(1-Lambda/2) 
+    S = γ + pi**2*rho/(beta*Ec) + ψ(beta*Ec/(2*pi**2*rho))
+    Ejstar = Ej*np.exp(-rho*S)
+    Tintegral = integrate.dblquad(lambda phi,phip: (1/(2*pi))*np.exp(-beta*Eb*phi)*np.exp(-2*beta*Ejstar*np.cos(phip)*np.sin(phi/2))*(1-theta*np.sin(phip-phi/2))*np.exp(2*beta*theta*np.sin(phip)*np.sin(phi/2)*(Eb + Ejstar*np.cos(phip)*np.cos(phi/2))), 0, 2*pi, lambda phip: 0, lambda phip: 2*pi)
+    Tqm = Tintegral
+    
+    #print(beta, rho, Lambda, theta, Ejstar)
+        
+    return Tqm
+
+
 #note: make this stuff more readable, maybe with kwargs. Maybe have a function that takes Ej, Ec, etc as inputs and outputs a useful array that can be used as input for these functions? anyway, do that later.
 
 def T_cl(T,Eb,Ej):
@@ -541,7 +599,7 @@ def T_cl(T,Eb,Ej):
     return Tcl 
 
 
-def V_qsm1(Renv,T,Eb,Ej,Ec):
+def V_qsm1(Rj,Renv,T,Eb,Ej,Ec):
     beta = 1/T
     rho = Renv/RQ
     Ic = Ej/(Φ0/(2*pi*k))
@@ -549,9 +607,180 @@ def V_qsm1(Renv,T,Eb,Ej,Ec):
     theta = Lambda*beta*Ej
     alpha = Eb/Ej
     
-    Vqsm1 = np.sqrt(1-alpha**2)/(2*pi)*np.exp(-2*beta*Ej*(1-alpha**2)**(3/2)/(3*alpha**2))*np.exp(2*theta*np.sqrt(1-alpha**2))
+    Vqsm1 = Rj*Ic*np.sqrt(1-alpha**2)/(2*pi)*np.exp(-2*beta*Ej*(1-alpha**2)**(3/2)/(3*alpha**2))*np.exp(2*theta*np.sqrt(1-alpha**2))
     
-    return Vqsm1,Ic,Lambda,theta,Eb,alpha
+    return Vqsm1
     
 
+def log_V_qsm1(Renv,T,Eb,Ej,Ec):
+    beta = 1/T
+    rho = Renv/RQ
+    Ic = Ej/(Φ0/(2*pi*k))
+    Lambda = 2*rho *(γ + 2*pi**2*rho/(beta*Ec) + ψ(beta*Ec/(2*pi**2*rho)))
+    theta = Lambda*beta*Ej
+    alpha = Eb/Ej
+    
+    logVqsm1 = np.log(np.sqrt(1-alpha**2)/(2*pi))+(-2*beta*Ej*(1-alpha**2)**(3/2)/(3*alpha**2))+(2*theta*np.sqrt(1-alpha**2))
+                      
+    return logVqsm1
 
+def qsm_params(Renv,T,Eb,Ej,Ec):
+    beta = 1/T
+    rho = Renv/RQ
+    Ic = Ej/(Φ0/(2*pi*k))
+    Lambda = 2*rho *(γ + 2*pi**2*rho/(beta*Ec) + ψ(beta*Ec/(2*pi**2*rho)))
+    Ejstar1 = Ej*(1-Lambda/2)
+    theta = Lambda*beta*Ej
+    Dmin = (1-theta)**(-1)
+    Dmax = (1+theta)**(-1)
+    alpha = Eb/Ej
+    
+#     print('beta = ' + str(beta))
+#     print('rho = ' + str(rho))
+#     print('Ic = ' + str(Ic))
+#     print('digamma = ' + str(ψ(beta*Ec/(2*pi**2*rho))))
+#     print('Lambda = ' + str(Lambda))
+#     print('Ejstar1 = ' + str(Ejstar1))
+#     print('theta = ' + str(theta))
+#     print('D(cos = -1) = ' + str(Dmin))
+#     print('D(cos = +1) = ' + str(Dmax))
+#     print('alpha = ' + str(alpha))
+    
+    return Ic,Lambda,theta,Eb,alpha,2*beta*Ej*(1-alpha**2),Dmin,Dmax
+
+
+def V_smol(Renv,T,Eb,Ej,Ec):
+    #ref: Tafuri pg 258 eqn 7.50
+    delta = 1.764*k*1.2    # gap = 1.764*kTc
+    Ib = Eb*2*pi*k/Φ0
+    Ij = Ej*2*pi*k/Φ0
+    Rn = pi*delta/(2*e*Ij)    #pi*delta/2eIc
+    gam = hbar*Ij/(e*k*T)
+    C = e**2/(2*Ec)
+    wj = np.sqrt(2*e*Ij/(hbar*C))
+    alpha = Ib/Ij
+    Omega = Rn*C*wj
+    T1 = integrate.quad(lambda phi: np.exp(-gam*alpha*phi/2)*Iν(0,gam*np.sin(phi/2)), 0, 2*pi)
+    T2 = integrate.quad(lambda phi1: np.exp(-gam*alpha*phi1/2)*Iν(1,gam*np.sin(phi1/2))*np.sin(phi1/2), 0, 2*pi)
+    Vsmol = (2/gam)*Rn*Ij*(np.exp(pi*gam*alpha)-1)/np.exp(pi*gam*alpha)*(1/T1[0])*(1+(Omega**2)*(T2[0]/T1[0]))
+    #added k factor to Vsmol b/c Rn*Ij seem to need it but then took it out
+    
+    return Vsmol
+
+def V_smol_test(Renv,T,Eb,Ej,Ec):
+    #ref: Tafuri pg 258 eqn 7.50
+    delta = 1.764*k*1.2    # gap = 1.764*kTc
+    Ib = Eb*2*pi*k/Φ0
+    Ij = Ej*2*pi*k/Φ0
+    Rn = pi*delta/(2*e*Ij)    #pi*delta/2eIc
+    gam = hbar*Ij/(e*k*T)
+    C = e**2/(2*Ec)
+    wj = np.sqrt(2*e*Ij/(hbar*C))
+    alpha = Ib/Ij
+    Omega = Rn*C*wj
+    T1 = integrate.quad(lambda phi: np.exp(-gam*alpha*phi/2)*Iν(0,gam*np.sin(phi/2)), 0, 2*pi)
+    T2 = integrate.quad(lambda phi1: np.exp(-gam*alpha*phi1/2)*Iν(1,gam*np.sin(phi1/2))*np.sin(phi1/2), 0, 2*pi)
+    Vsmol = (2/gam)*Rn*Ij*(np.exp(pi*gam*alpha)-1)/np.exp(pi*gam*alpha)*(1/T1[0])*(1+(Omega**2)*(T2[0]/T1[0]))
+    #added k factor to Vsmol b/c Rn*Ij seem to need it but then took it out
+    
+    return Vsmol,T1
+
+
+#This J: I think it's the correlation function from PE theory but what is the special case if any?
+def J(t,Zt,T):
+    beta = 1/T
+    Z = Zt
+    Jt = 2*np.quad(lambda w: (1/w*RQ)*np.real(Z)*(np.coth(beta*hbar*w/2)*(cos(w*t)-1)-1j*np.sin(w*t)), 0, np.inf)
+    return Jt
+
+# def PE(E):
+#     P = 1/(2*pi*hbar)*np.quad(lambda t: np.exp(J(t,Zt,T) + 1j*E*t
+
+#Formulas from Zazunov, Didier, and Hekking EPL 83, 47012 (2008)
+def V_NNA_smallg(Renv, T, Ib, u, Ej, Ec):
+    g = RQ/Renv
+    Vc = pi*U0(Ej,Ec)/e*kB #check kB factor, used to be /kB
+    V = Vc*u*np.abs(gamma(g + 1j*hbar*(1/(kB*T))*Ib/(2*e)))**2/gamma(2*g)*np.sinh(pi*hbar*(1/(kB*T))*Ib/(2*e))
+    return V
+
+def V_NNA_smallg_Ejfit(Renv,T,Ib,Ejs,Ec,cosine):
+    g = RQ/Renv
+    Beta = 1/kB/T
+    Ej = Ejs*cosine
+    Vc = pi*U0(Ej,Ec)/e/kB #check kB factor, used to be /kB
+    u_calc = Beta*U0(Ej,Ec)/4/pi*(Beta*hbar*wc_paper(Renv,Ej,Ec)*np.exp(γ)/2/pi)**(-2*g)
+    V = Vc*u_calc*np.abs(gamma(g + 1j*hbar*Beta*Ib/2/e))**2/gamma(2*g)*np.sinh(pi*hbar*Beta*Ib/2/e)
+    return V
+
+def V_NNA_smallg_nogamma(Renv, T, Ib, u, Ej, Ec):
+    g = RQ/Renv
+    Vc = pi*U0(Ej,Ec)/e/kB
+    V = Vc*u*np.sinh(pi*hbar*(1/(kB*T))*Ib/(2*e))
+    return V
+
+def V_NNA_smallg_sech(Renv, T, Ib, u, Ej, Ec):
+    Beta = 1/(kB*T)
+    g = RQ/Renv
+    Vc = pi*U0(Ej,Ec)/e/kB
+    #u = Beta*U0(Ej,Ec)/4/pi*(Beta*hbar*wc*np.exp(
+    #u = u(Renv,T,Ej,Ec,wc)
+    V = Vc*u/np.cosh(pi*hbar*Beta*Ib/2/e)/gamma(2*g)*np.sinh(pi*hbar*Beta*Ib/(2*e))
+    return V
+#this assumes g = 1/2, be careful with Renv!
+
+def V_NNA_smallg_10workaround(Renv, T, Ib, u, Ej, Ec):
+    g = RQ/Renv
+    Vc = pi*U0(Ej,Ec)/e/kB
+    V = Vc*u*np.abs(gamma(g + 1j*hbar*(1/(kB*T))*Ib/10/(2*e)))**2/gamma(2*g)*np.sinh(pi*hbar*(1/(kB*T))*Ib/(2*e))
+    return V
+
+def V_NNA_smallg_relative(Renv, T, Ib, u, Ej, Ec):
+    g = RQ/Renv
+    #Vc = pi*U0(Ej,Ec)/e/kB
+    Vrel = u*np.abs(gamma(g + 1j*hbar*(1/(kB*T))*Ib/(2*e)))**2/gamma(2*g)*np.sinh(pi*hbar*(1/(kB*T))*Ib/(2*e))
+    return Vrel
+
+def V_NNA_smallg_wc(Renv, T, Ib, wc, Ej, Ec):
+    g = RQ/Renv
+    Vc = pi*U0(Ej,Ec)/e/kB
+    V = (1/kB/T)*U0(Ej,Ec)/(4*pi)*((1/kB/T)*hbar*wc*np.exp(γ)/(2*pi))**(-2*g)*Vc*np.abs(gamma(g + 1j*hbar*(1/(kB*T))*Ib/(2*e)))**2/gamma(2*g)*np.sinh(pi*hbar*(1/(kB*T))*Ib/(2*e))
+    return V
+
+def Vc(Ej,Ec):
+    return pi*U0(Ej,Ec)/e/kB
+
+def gammapart(Renv, T, Ib):
+    g = RQ/Renv
+    return np.abs(gamma(g + 1j*hbar*(1/(kB*T))*Ib/(2*e)))**2/gamma(2*g)
+    
+def U0(Ej,Ec):
+    return 4*np.sqrt(2/pi)*Ec*(2*Ej/Ec)**(3/4)*np.exp(-4*np.sqrt(2*Ej/Ec))
+    #this is in Kelvin, multiply by kB to get Joules
+
+def wg(Ej,Ec): 
+    return np.sqrt(2*Ej*Ec)/hbar*kB
+
+def wc_from_u(Renv, T, uval, Ej, Ec):
+    g = RQ/Renv
+    return 8*(pi*kB*T)**2/(hbar*U0(Ej,Ec)*np.exp(γ))*(uval)**(-1/(2*g)) #kB questionable, this whole function may be garbage
+
+def u(Renv,T,Ej,Ec,wc):
+    g = RQ/Renv
+    return (1/kB/T)*U0(Ej,Ec)/(4*pi)*((1/kB/T)*hbar*wc*np.exp(γ)/(2*pi))**(-2*g)
+
+def Leff(Renv,Ej,Ec):
+    g = RQ/Renv
+    Lj = (Φ0/2/pi)**2/Ej/kB #the kB's here should allow direct comparison to R
+    return 2*pi/g/np.sqrt(2*Ec/Ej)*Lj
+
+def wc_paper(Renv,Ej,Ec):
+    return Renv/Leff(Renv,Ej,Ec)
+
+def databyid(run_id: int, **kwargs):
+    from qcodes.dataset.data_set import load_by_id
+
+    dataset = load_by_id(run_id)
+    title = f"#{run_id}, Exp {dataset.exp_name} ({dataset.sample_name})"
+    alldata = get_data_by_id(run_id)
+    
+    return ({'title':title, 'alldata':alldata})
