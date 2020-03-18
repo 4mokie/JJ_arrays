@@ -63,6 +63,10 @@ def plot_Ejcos(Ej, Ec, N):
         ax.hlines(Emin,-1,1, alpha = 0.3, color = f'C{i}')
     
 
+    wp = np.sqrt(8*Ej*Ec)
+    
+    ax.set_title('Ej = {:1.2f}, Ec = {:1.2f}, wp = {:1.2f}'.format(Ej,Ec,wp) )
+    print('Ej = {:1.2f}, Ec = {:1.2f}, wp = {:1.2f}'.format(Ej,Ec,wp))
     return ax
 
 
