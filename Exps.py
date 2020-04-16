@@ -28,47 +28,84 @@ from qcodes.dataset.plotting import plot_by_id, get_data_by_id
 import pandas as pd
 
 import pprint
+import json
+
+
 
 
 class Exps():
     
 
     
-    def __init__(self, runid_table, db):
+    def __init__(self, sample, folder):
         
-        self.db = db
+
+    
+        #keys ids Bs coss T comm  
+        self.keys = ['ids', 'B', 'cos', 'T', 'comm']
         
-        (keys, valss) = runid_table
+        self.sample = sample
+        self.folder = folder
         
-        self.exps = [{ key : val for key, val in zip(keys, vals)  }  for vals in valss ]
+        self.exp_connect()
 
         self.ids = dict()
-        for exp in self.exps:
+        
+                    
+
+        
+    # self.tabe = { 'id' : {  'B' : Bval , },  }    
+    def load_old(self, list_of_exp_dict):
+        
+        
+        table =  dict()
+        
+        for exp in list_of_exp_dict:
+                
             for j, idx in enumerate(exp['ids']):
-
-
-                self.ids[idx]= dict()
+                
+                
+                id_param = dict()
+         
                 for key, val in exp.items():
 
                     if isinstance(val, Iterable) and not isinstance(val, str):
 
-                        self.ids[idx][key] =  val[j] 
+                        id_param[key] =  val[j] 
 
                     else:
 
-                        self.ids[idx][key] =  val
+                        id_param[key] =  val
                         
-                if 'cos' in self.ids[idx].keys():
-                    self.ids[idx]['B'] = self._get_B (idx)
-                elif 'B' in self.ids[idx].keys():
-                    self.ids[idx]['cos'] = self._get_cos (idx)
-                        
-
-    def db_connect(self):
-
-        path = self.db
-        qc.config["core"]["db_location"] = path
+#                 if 'cos' in exp.keys():
+#                     new_line_exp['B'] = self._get_B (idx)
+#                 elif 'B' in exp.keys():
+#                     new_line_exp['cos'] = self._get_cos (idx)
+                    
+                table[idx] = id_param
+                    
+        path = 'file.json'            
         
+        self.table= table
+        
+        with open(path, "w") as write_file:
+
+            json.dump(table, write_file)
+                        
+
+    def exp_connect(self):
+
+#         path = self.folder + 'exps_table{}.json'.format(self.sample) 
+        path = 'file.json'
+        try:
+            with open(path, "r") as read_file:
+                data = json.load( read_file)
+        except FileNotFoundError:
+            with open(path, "w") as write_file:
+                data = {0 : ''}
+                json.dump(data, write_file)
+        
+        self.table = data
         
     def _get_cos(self, idx):
         
@@ -114,17 +151,17 @@ class Exps():
             else:
                 return np.isclose(a, b, atol = atol)
 
-        cond_ids = set(idx for idx in self.ids.keys() if isclose_float_or_str(value, self.ids[idx][param]) )
+        cond_ids = set(idx for idx in self.table.keys() if isclose_float_or_str(value, self.table[idx][param]) )
 
 
         if len(cond_ids) == 0:   # if there's no exact matching - find closest
             
             
-            all_vals = np.array([ exp[param] for exp in self.ids.values() ] )
+            all_vals = np.array([ exp[param] for exp in self.table.values() ] )
 
             atol = min( abs( all_vals - value ) )
-            cond_ids = set(idx for idx in self.ids.keys() 
-                           if isclose_float_or_str(self.ids[idx][param], value, atol = atol) )
+            cond_ids = set(idx for idx in self.table.keys() 
+                           if isclose_float_or_str(self.table[idx][param], value, atol = atol) )
         
         return cond_ids
     
@@ -141,7 +178,7 @@ class Exps():
             return vals
         
         
-        self.db_connect()
+#         self.db_connect()
             
         list_cond_ids = []
 
@@ -167,7 +204,7 @@ class Exps():
         lab = ''
         for key in which.keys():
             
-            val = self.ids[idx][key]
+            val = self.table[idx][key]
             if not isinstance(val, str):
                 val = eng_string(val)
 #                 val = '{:.2e}'.format(val)
