@@ -20,6 +20,11 @@ import scipy.special as special
 from mpmath import besseli as Iν
 from scipy.constants import hbar, pi, h, e, k
 
+from mpmath import mp
+
+mp.dps = 25
+
+
 kB = k
 γ = 0.57721566
 RQ = h/4/e**2
@@ -27,15 +32,25 @@ RQ = h/4/e**2
 Δ = 2.1*kB
 
 
+def Cjj(A, metalTHK=250e-10, c_per_m2 = 50e-15*1e12):
+    
+    return c_per_m2 * (A + 2*np.sqrt(A)*metalTHK)
+
+def Ec(C):
+    
+    return e**2/2/C/kB
+    
+
 def Qp(EJ, Ec, Rsh):
-#    return wpK(EjK(Ic), EcK(C))*kB/hbar*C*Rshunt
+
     return np.pi*Rsh/RQ*(EJ/2/Ec)**0.5
 
 
 def Ic (R, Δ = 2.1*kB):
     return pi*Δ/2/e/R
 
-
+def Ic_AB (Ej):
+    return Ej/(Φ0/2/pi/kB)
 
 def EJ_AB (R, Δ = 2.1*kB):
     
@@ -76,6 +91,19 @@ def  I_IZ( Vb, EJ, R, T):
             out = np.append(out, 0 )
 
     return out
+
+
+def  I_IZ_simp( Vb, EJ, R, T):
+    out = []
+
+    I0 = 2*e*EJ*kB/hbar
+
+    Ω = 2*e*I0*R/hbar
+    D = T*kB*R*(2*e/hbar)**2
+    z = Ω/D
+   
+
+    return I0*z/2 * 2*e*Vb*D/hbar / ( (2*e*Vb/hbar)**2 + D**2  )
 
 def find_R0_Isw( EJ, R_env , T, VERBOSE = False):
     
@@ -253,94 +281,5 @@ def R0_KM(EJ, Ec, Q, T):
     R0 = V_KM(di, EJ, Ec, Q, T)/di/Ic0
     
     return R0
-# #####################################################
-# def avg_group(vA0, vB0):
-#     vA0 = np.round(vA0*1e15)/1e15   #remove small deferences
-#     vB0 = np.round(vB0*1e15)/1e15
-    
-#     vA, ind, counts = np.unique(vA0, return_index=True, return_counts=True) # get unique values in vA0
-#     vB = vB0[ind]
-#     for dup in vB[counts>1]: # store the average (one may change as wished) of original elements in vA0 reference by the unique elements in vB
-#         vB[np.where(vA==dup)] = np.average(vB0[np.where(vA0==dup)])
-#     return vA, vB
-
-
-# def cut_dxdy(vA0, vB0, dx,dy):
-    
-#     ind1 = np.where(np.abs(vA0) < dx )
-#     vA1, vB1 = vA0[ind1], vB0[ind1]
-
-#     ind2 = np.where(np.abs(vB1) < dy )
-#     vA, vB = vA1[ind2], vB1[ind2]
-
-#     return vA, vB
-
-
-# def V_func(I,V, val):
-#     out = []
-#     for x in np.nditer(val):
-#         out = np.append (out,  V[np.argmin(abs(I-x))])
-#     return out
-
-
-# def diffArr(Xarr, Yarr, step):
-#     out = []
-#     for x in Xarr:
-#         out = np.append(out, np.mean((V_func(Xarr,Yarr, x+step/2))  - np.mean(V_func(Xarr,Yarr, x-step/2)))/(step))
-#     return out
-
-
-# def R0byFit (I,V,n = 3):
-#     V = np.append(V, V[-n:])
-#     I = np.append(I, I[-n:])
-    
-#     out = []
-    
-#     for i in range(len(I)-n):    
-#         a, b = polyfit (I [i:i+n] , V [i:i+n], 1 )
-#         out = np.append(out, a)
-        
-#     return out
-
-# def XYEqSp(Xarr, Yarr, step):
-#     outX = []
-#     outY = []
-
-#     n = int((np.max(Xarr) - np.min(Xarr)) // step)    
-    
-#     for i in range(n):
-#         outX = np.append( outX, V_func(Xarr, Xarr, np.min(Xarr) + i*step)  )
-#         outY = np.append( outY, V_func(Xarr, Yarr, np.min(Xarr) + i*step)  )
-
-#     return outX, outY
-
-
-# def offsetRemove(I,V, Istep, mode = 'ZF', Ioff_def = 8e-12):
-       
-#     Rdiff = Rdiff_TVReg(V, Istep)
-    
-#     ind_minR = np.argmin(Rdiff)
-#     ind_maxR = np.argmax(Rdiff)
-
-
-#     if mode == 'ZF':
-#         Ioff = I[ind_minR]
-#     else:
-#         Ioff = Ioff_def
-  
-#     Voff = V_func(I, V, Ioff)
-
-#     Inew = I - Ioff
-#     Vnew = V - Voff
-   
-
-#     return Inew, Vnew
-
-# def Rdiff_TVReg(V, Istep):
-#     stepx = 0.05
-#     Rdiff = (TVRegDiff(V, 100, 10e-3, dx = stepx, ep=1e-1, scale='small', plotflag=0)*stepx / Istep)[:-1]
-#     return Rdiff
-
-
 
 
