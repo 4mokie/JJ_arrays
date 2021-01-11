@@ -270,13 +270,13 @@ def V_KM(i, EJ, Ec, Q, T):
 #     out = h/2/e*(Np/τp +1/τQp - Nm/τm - 1/τQm)
     out = h/2/e*(Np/τp  - Nm/τm)
     
-#     out[np.where (abs(i) > 4/np.pi/Q) ] = np.nan 
+    out[np.where (abs(i) > 4/np.pi/Q) ] = np.nan 
     
     return out
     
 
-def R0_KM(EJ, Ec, Q, T):    
-    di = 0.01
+def R0_KM(EJ, Ec, Q, T, di = 0.01):    
+    
     Ic0 = EJ/(Φ0/2/pi/kB)
     R0 = V_KM(di, EJ, Ec, Q, T)/di/Ic0
     

@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 
 from IPython.core.display import display, HTML
 
+import lmfit as lmf
+
 
 import qcodes as qc
 from qcodes.dataset.database import initialise_database
@@ -25,6 +27,15 @@ from si_prefix import si_format as SI
 import pandas as pd
 pd.set_eng_float_format(accuracy=1, use_eng_prefix=True)
 
+
+from scipy.constants import hbar, pi, h, e, k
+
+
+
+kB = k
+γ = 0.57721566
+RQ = h/4/e**2
+Φ0 = h/2/e
 
 def update_df(df, index, valdict):
     
@@ -66,14 +77,16 @@ def calc_jj_param(df, params = None):
 
 
     
-def show_df(df, sort = None, find = None, which = 'all'):
+def show_df(df, sort = None, find = None, which = 'all', status = 'all'):
 
     def make_link(dev_name):
 
         folder = dev_name.split('N')[0]
 
-#         path = "./{}/{}_logbook.ipynb".format(folder,dev_name)
-        path = "../{}/{}_logbook.ipynb".format(folder,dev_name)
+        
+        for root, dirs, _ in os.walk('..'): #goes 2 dir up and walk down until meet the chain folder
+            if '!_chains'  in dirs:
+                path = root + "/!_chains/{}/{}_logbook.ipynb".format(folder,dev_name)  
 
         return '<a target="_blank" href={}>{}</a>'.format(path,dev_name)
 
@@ -89,9 +102,14 @@ def show_df(df, sort = None, find = None, which = 'all'):
         
         return df
 
-
+    measd = df['status'].str.startswith('measd')
     
     cdf = df.copy()
+    
+    if status is 'measd':
+        cdf = cdf[measd]
+    elif status is 'fab':
+        cdf = cdf[not measd]
     
     cdf = cdf.sort_index(axis = 0)
     
@@ -254,32 +272,6 @@ def xy_by_id(idx):
     return x,y
 
 
-def extract_Isw_R0_by_id (idx, dy = 50e-6, yoff = 0):
-    
-    
-    Is,Vs = xy_by_id(idx)
-    
-    Vs -= yoff
-
-    Is,Vs = cut_dxdy(Is, Vs, dx = 250e-9 ,dy = dy)    
-    return extract_Isw_R0 (Is,Vs)
-
-
-
-        
-        
-        
-def avg_group(vA0, vB0):
-    vA0 = np.round(vA0*1e15)/1e15   #remove small deferences
-    vB0 = np.round(vB0*1e15)/1e15
-    
-    vA, ind, counts = np.unique(vA0, return_index=True, return_counts=True) # get unique values in vA0
-    vB = vB0[ind]
-    for dup in vB[counts>1]: # store the average (one may change as wished) of original elements in vA0 reference by the unique elements in vB
-        vB[np.where(vA==dup)] = np.average(vB0[np.where(vA0==dup)])
-    return vA, vB
-
-
 def cut_dxdy(vA0, vB0, dx,dy):
     
     ind1 = np.where(np.abs(vA0) < dx )
@@ -287,13 +279,8 @@ def cut_dxdy(vA0, vB0, dx,dy):
 
     ind2 = np.where(np.abs(vB1) < dy )
     vA, vB = vA1[ind2], vB1[ind2]
-
-    return vA, vB
-
-
-def offsetRemove(X,Y, offX, offY):
     
-    return X - offX, Y - offY 
+    return vA, vB
 
 
 def eng_string( x, sig_figs=3, si=True):
@@ -332,304 +319,111 @@ def eng_string( x, sig_figs=3, si=True):
     return ( '%s%s%s') % ( sign, x3, exp3_text)
 
 
-
-
-
-
-
-
-def load_IVC_B(file):
-
-    IVC = []
+def extract_Isw_R0_by_id (idx, fullIVC = True, dy = 50e-6, yoff = 0):
     
-    data = np.genfromtxt(file, skip_header = 22 ) [1:,:] 
-    Ts    = data[:,5]
-    Iraw = data[:,7]
-    Vraw = data[:,8]
-    IG   = data[:,6]
+    
+    Is,Vs = xy_by_id(idx)
+    
+    Vs -= yoff
 
+    Is,Vs = cut_dxdy(Is, Vs, dx = 250e-9 ,dy = dy) 
+
+    return extract_Isw_R0 (Is,Vs, fullIVC)
+
+
+def extract_Isw_R0 (Is,Vs, fullIVC):
     
 
-    index_sets = [np.argwhere(i == IG) for i in np.unique(IG)]
-
-    Iss = []
-    Igs = []
-
-    for sll in index_sets:
-        sl = sll.flatten()
-
-#         I, V = avg_group(Iraw[sl], Vraw[sl])
-        I, V = Iraw[sl], Vraw[sl]
-        
-        T = np.mean(Ts[sl])
-        B = np.mean(IG[sl])
-        
-        IVC_i = {'I' : I, 'V' : V, 'T' : T, 'B' : B }
-        
-        IVC.append(IVC_i)
-
-    return IVC
-
-
-
-
-
-    for i in exp['ids']:
-
-        I, V = xy_by_id(i)
-        
-        Tb = exp['T']
-        I, V = offsetRemove(I,V, offX = 25.5e-12, offY = 35e-6)
-
-        
-        I, V = cut_dxdy(I, V, dx = 1e-9 ,dy = 0.1e-3)
-
-        I = I - Iqp(  V, T = Tb, G1 = 1/20.06e3, G2 = 1/120e3, V0 = 0.35e-3 ) 
-        
-        ax.plot(I,V, 'o')
-
-
-       
-
-        
-    exp ['Is' ] =  Is
-    exp ['Vs' ] =  Vs
-
-        
-
-    
-
-
-
-def load_exp_B(file, ZF, FF, VERBOSE = False):
-    
-    exp  = {}
-   
-    Isws = []
-    R0s  = []
-    Is   = []
-    Vs   = []
-    Bs   = []
-    
-    data  = np.genfromtxt(file, skip_header = 22 ) [1:,:] 
-    Ts    = data[:,5]
-    Iraw  = data[:,7]
-    Vraw  = data[:,8]
-    IG    = data[:,6]
-    
-    T = np.mean(Ts)
-
-    index_sets = [np.argwhere(i == IG) for i in np.unique(IG)]
-
-    Iss = []
-    Igs = []
-
-    for sll in index_sets:
-        sl = sll.flatten()
-
-        I, V = Iraw[sl], Vraw[sl]
-        
-        n = len(I)
-        n_up, n_down = np.int(n/4), np.int(3*n/4)
-        
-        I = np.append(I[: n_up], I[ n_down:])
-        V = np.append(V[: n_up], V[ n_down:])
-    
-        I, V = cut_dxdy(I, V, dx = 5e-8 ,dy = 2e-5)
-        
-        Is.append(I)
-        Vs.append(V)
-        
-        Isw, R0 = extract_Isw_R0 (I,V)
-        Isws.append(Isw)
-        R0s.append(R0)
-        
-        Bs.append(np.mean(IG[sl]))
-        
-
-        
-    exp = {'Is' : Is, 'Vs' : Vs, 'T' : T, 'B' : np.array(Bs) }
-    
-    exp ['Isws'] =  np.array(Isws)
-    exp ['R0s' ] =  np.array(R0s )
-    exp ['cos' ] =  np.array( abs(np.cos(np.pi*(exp['B'] - ZF )/(ZF + 2* FF)) ) )
-
-        
-    if VERBOSE:
-        fig, ax = plt.subplots()
-        for i, cos in enumerate (exp ['cos' ]):
-
-            ax.plot(exp ['Is'][i],exp ['Vs'][i], 'o', label = 'cos = {:1.2f}'.format(cos))
-            
-            ax.set_title('T = {:3.0f} mK'.format(exp['T'] / 1e-3))
-#         ax.legend()
-        
-    return exp
-
-
-
-
-def extract_Isw_R0 (Is,Vs):
-    
-        if len( Is )== 0 or len( Vs )== 0 :
+        l = len(Is)
+        if l == 0 :
             Isw, R0 = np.nan, np.nan
-            print('len is zero')
-            return Isw, R0
+            return Isw, (R0, np.nan)
         
         
-        
-        Isw = ( np.max(Is) - np.min(Is) ) /2
-        
+        if fullIVC:
+            Isw = ( np.max(Is) - np.min(Is) ) /2
+        else:
+            Isw =  np.max(Is)
+                   
+                   
         order = Is.argsort()
-        
         Is, Vs = Is[order], Vs[order]
         
-#         n = len(Is)
-#         n_min, n_max = np.int(n/3), np.int(2*n/3)
-#         n_sl = slice(n_min, n_max)
+        fit = lambda x, R0, b: x*R0+b
+        fitmodel = lmf.Model(fit)
 
-        n_sl = np.where( (Is > 0)  ) and np.where (Is < 300e-12)
-#         n_sl = np.where( abs(Is) < 200e-12 ) 
+        R0_guess = np.mean(np.diff(Vs)/np.diff(Is))
+
+        fitparams = fitmodel.make_params(R0 = R0_guess, b = 0)
+        fitmodel.set_param_hint('R0', min = 0)
+
         
-        if len( Vs[n_sl] )== 0 :
+        if fullIVC:
+            Is, Vs = Is[l//5:-l//5], Vs[l//5:-l//5]
+        else:
+            Is, Vs = Is[:-l//5], Vs[:-l//5]
+        
+        try:
+
+            result = fitmodel.fit(Vs, fitparams, x=Is,nan_policy='omit')
+            R0 = result.params['R0'].value
+            errR0 = result.params['R0'].stderr
+        except:
             R0 = np.nan
-            return Isw, R0
-        
-        #R0, b = np.polyfit (  Is[n_sl] , Vs[n_sl], 1 )
-        R0 = np.mean(np.diff(Vs[n_sl])) / np.mean(np.diff(Is[n_sl]))        
-        
+            errR0 = np.nan
         if R0 < 0:
             R0 = np.nan
-#         R0 = np.mean(np.diff(Vs[n_sl])) / np.mean(np.diff(Is[n_sl]))
+            errR0 = np.nan
         
-        return Isw, R0
+        return Isw, (R0, errR0)
 
-def load_by_key(exp, key, val):
+
+    
+def fit_hist(Isws, EJ = 4, Ec = 0.05, dIdt = 30e-9, bins = 21, verbose = False):
+
+    def wpK(EjK, EcK):
+        return np.sqrt(8*EjK*EcK)
+    
+    eps = .001
+    
+    Isw = Isws 
+    
+    
+    counts, Ibins = np.histogram(Isw, bins = bins)
+    dI = np.mean( np.diff(Ibins) )
+
+    SP = np.cumsum(counts)/len(Isw)
+    Gamma = np.array([ np.log( (1 - SP[i])/(1 - SP[i+1]) ) for i in range(len(SP)-1)  ])*dIdt/dI
+
+
+    Ic = 2*pi*EJ/Φ0*kB
+    Ic0 = 1.5 * np.max(Isw)
+    Ib = Ibins[:-2]
+    
+    while abs((Ic - Ic0)/Ic) > eps:
+        Ic = Ic0
+        wa = wpK(EJ, Ec)*kB/hbar/2/pi * (1 - (Ib/Ic)**2)**0.25
+
+        coeff =  (-np.log(2*pi*Gamma/wa))**(2/3)
+        i = np.isfinite(coeff) 
         
-    ind =   np.argmin ( np.abs( exp[key] - val ))
-    return ind
-    
-def plot_by_key(exp, key, val, ax = None,**kw):
-   
-    ind =   np.argmin ( np.abs( exp[key] - val ))
-    
-    I, V = exp['Is'][ind], exp['Vs'][ind]
-    
-#     I = I - V/1.3e9
-
-    if ax == None:
-        fig, ax = plt.subplots()
         
-    ax.plot( I, V, 'o', label = 'T = {:2.0f} mK, {} = {:1.2f} '.format( exp['T']/1e-3, key, exp[key][ind] ) , **kw)
-    ax.legend()   
-    
-    return I, V
-    
-    
-    
-    
-# def get_Is(self, idx,  dy = 300e-6, Voff = -0.55e-3):
-
-#     I, V = xy_by_id(idx)
-#     V-= Voff
-#     I, V = cut_dxdy(I, V, dx = 50e-9 ,dy = dy)
-
-#     return I,V+Voff    
-    
-    
-    
-    
-    
-def get_R0(x,y, x0 = 0, VERBOSE = False):
-    
-    if len(y) < 5:
-        return np.nan
-    
-    sort_ind = np.argsort(x)
-    x, y = x[sort_ind], y[sort_ind]
-
-    _, unique_ind = np.unique(x, return_index=True)
-    x, y = x[unique_ind], y[unique_ind]
-
-    x,y = remove_jumps(x,y)
-
-    spl = UnivariateSpline(x, y)
-    spl.set_smoothing_factor(0.5)
-    
-    diff = np.diff( spl(x) )/ np.diff( x )
-    
-    i_x0 = np.argmin( abs( x - x0) )
-    
-    R0 = diff[i_x0] 
-    
-    if VERBOSE:
-        fig, ax = plt.subplots()
         
-        ax.plot(x,y, 'o', ls = '')
-        ax.plot(x, spl(x))
+        a, b = np.polyfit( Ib[i][5:], coeff[i][5:],1)
         
-        ax2 = ax.twinx()
-        ax2.plot(x[:-1], diff, c = 'k')
+            
+        Ic0 = -b/a
+        Teff = -1/kB*Φ0/2/pi*4*np.sqrt(2)/3 /np.sqrt(b)/a
     
-    return R0
-    
-    
+    if verbose:
+        fix, ax = plt.subplots()
+        ax.plot(Ib[i], coeff[i], 'o')
+        ax.plot(Ib[i], a*Ib[i]+b)
+
+    return Ic0, Teff
 
 
 
-
-def V_func(I,V, val):
-    out = []
-    for x in np.nditer(val):
-        out = np.append (out,  V[np.argmin(abs(I-x))])
-    return out
-
-
-
-def remove_jumps(x,y):
-    
-    
-    if len(y) < 3:
-        return x,y
-    
-    y_out = []
-    i_off = 1
-    Voff = 0
-    for i in range(len(y) ):
-
-        steps = abs(np.diff(y))
-
-        if i > i_off and i < len(y) - 2 :
-
-            avg_diff = np.mean(steps[:i-1])
-            if steps[i-1] > 10* avg_diff:
-                Voff -= steps[i-1]
-
-
-
-        y_out.append(y[i]+Voff)
-
-
-    y = np.array(y_out)
-    x = x
-    return x,y
-
-
-
-def XYEqSp(Xarr, Yarr, step):
-    outX = []
-    outY = []
-
-    if len(Xarr) == 0 :
-        outX, outY = 0, 0
-    else:    
-        n = int((np.max(Xarr) - np.min(Xarr)) // step)    
-
-        for i in range(n):
-            outX = np.append( outX, V_func(Xarr, Xarr, np.min(Xarr) + i*step)  )
-            outY = np.append( outY, V_func(Xarr, Yarr, np.min(Xarr) + i*step)  )
-
-    return outX, outY
 
 
     
